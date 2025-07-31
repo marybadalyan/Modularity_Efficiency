@@ -30,16 +30,6 @@ endif()
 add_executable(main_optimized main.cpp)
 
 if(MSVC)
-   
-       target_compile_options(main_optimized PRIVATE
-            -O3
-            -march=native
-            -ffast-math
-            -funroll-loops
-            -ftree-vectorize
-            -fopt-info-vec
-            -fopt-info-vec-missed
-        )
     add_custom_command(
         TARGET main_optimized POST_BUILD
         # This command runs after the build for the given configuration
@@ -47,27 +37,36 @@ if(MSVC)
         COMMENT "Dumping assembly for $<CONFIG> build to analysis/assembly_optimized.txt"
     )
 else() # For GCC/Clang
-
-
-    target_compile_options(main_optimized PRIVATE
-    $<$<CXX_COMPILER_ID:GNU,Clang>:
-        -O3
-        -march=native
-        -ffast-math
-        -funroll-loops
-        -ftree-vectorize
-        -fopt-info-vec
-        -fopt-info-vec-missed
-    >
-    $<$<CXX_COMPILER_ID:MSVC>:
-        /O2
-        /arch:AVX2
-    >
-    )
-
      add_custom_command(
         TARGET main_optimized POST_BUILD
         COMMAND objdump -d -M intel "$<TARGET_FILE:main_optimized>" > "${ANALYSIS_DIR}/assembly_optimized.txt"
         COMMENT "Dumping assembly for $<CONFIG> build to analysis/assembly_optimized.txt"
     )
 endif()
+
+
+target_compile_options(main_optimized PRIVATE
+    $<$<CXX_COMPILER_ID:GNU>:
+        -O3
+        -march=native
+        -ffast-math
+        -funroll-loops
+        -fopt-info-vec
+        -fopt-info-vec-missed
+    >
+    $<$<CXX_COMPILER_ID:Clang>:
+        -O3
+        -march=native
+        -ffast-math
+        -fvectorize
+        -fslp-vectorize
+        -Rpass=loop-vectorize
+        -Rpass=slp-vectorize
+    >
+    $<$<CXX_COMPILER_ID:MSVC>:
+        /O2
+        /arch:AVX2
+        /fp:fast
+        /GL
+    >
+)
